@@ -1,95 +1,1319 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8" />
-    <title>Dashcam Tools</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-        :root {
-            color-scheme: light dark;
-            --bg-color: #ffffff;
-            --text-color: #1a1a1a;
-            --text-muted: #666666;
-            --link-color: #0080ff;
-            --border-color: #e0e0e0;
-        }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEI Telemetry Visualizer</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:           #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;  /* blue    */
+    --series-2:       #008300;  /* green   */
+    --series-3:       #e87ba4;  /* magenta */
+    --series-4:       #eda100;  /* yellow  */
+    --series-6:       #eb6834;  /* orange  */
+    --series-7:       #4a3aa7;  /* violet  */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:           #0d0d0d;
+      --surface-1:      #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted:          #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #008300;
+      --series-3:       #d55181;
+      --series-4:       #c98500;
+      --series-6:       #d95926;
+      --series-7:       #9085e9;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:           #0d0d0d;
+    --surface-1:      #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #008300;
+    --series-3:       #d55181;
+    --series-4:       #c98500;
+    --series-6:       #d95926;
+    --series-7:       #9085e9;
+  }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #1a1a1a;
-                --text-color: #e8e8e8;
-                --text-muted: #999999;
-                --link-color: #4da6ff;
-                --border-color: #333333;
-            }
-        }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 20px 24px 0;
+  }
+  header h1 { font-size: 18px; font-weight: 650; margin: 0; }
+  header .sub { color: var(--text-secondary); font-size: 13px; }
+  header .spacer { flex: 1; }
+  button.ghost {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text-secondary); font: inherit; font-size: 13px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  button.ghost:hover { color: var(--text-primary); }
 
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            line-height: 1.5;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 1.5rem 1rem;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
+  /* drop zone */
+  #dropzone {
+    margin: 24px; padding: 56px 24px;
+    border: 1.5px dashed var(--baseline); border-radius: 12px;
+    background: var(--surface-1);
+    text-align: center; color: var(--text-secondary);
+    cursor: pointer;
+  }
+  #dropzone.dragover { border-color: var(--series-1); color: var(--text-primary); }
+  #dropzone strong { color: var(--text-primary); }
+  #dropzone .hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  #file-error { color: var(--text-primary); margin-top: 10px; font-size: 13px; display: none; }
 
-        @media (min-width: 640px) {
-            body {
-                padding: 2rem 1rem;
-            }
-        }
+  /* controls */
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+    padding: 14px 24px 0;
+  }
+  .controls label { color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .controls select, .controls input[type="number"] {
+    font: inherit; font-size: 13px; color: var(--text-primary);
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 3px 8px;
+  }
+  .controls input[type="number"] { width: 64px; }
+  .controls input[type="number"]:disabled { color: var(--muted); }
+  .controls .filename { color: var(--muted); font-size: 12.5px; margin-left: auto; }
 
-        h1 {
-            margin-bottom: 0.25rem;
-            font-size: clamp(1.5rem, 5vw, 2rem);
-        }
+  /* video — sticky so it stays in view while scrolling the charts */
+  .video-wrap {
+    position: sticky; top: 0; z-index: 20;
+    padding: 12px 24px;
+    background: var(--page);
+    border-bottom: 1px solid var(--border);
+  }
+  .video-grid {
+    display: grid; gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+  .video-grid figure { margin: 0; position: relative; min-width: 0; }
+  .video-grid video {
+    display: block; width: 100%; max-height: 30vh; object-fit: contain;
+    background: #000; border-radius: 10px; border: 1px solid var(--border);
+  }
+  /* spatial layout (all four cameras): arranged like the car —
+     front top-center, back below it, repeaters flanking their sides */
+  .video-grid.spatial {
+    grid-template-areas: "left front right" "left back right";
+    grid-template-columns: 1fr 1.35fr 1fr;
+    align-items: center;
+  }
+  .video-grid.spatial figure[data-cam="front"]          { grid-area: front; }
+  .video-grid.spatial figure[data-cam="back"]           { grid-area: back; }
+  .video-grid.spatial figure[data-cam="left_repeater"]  { grid-area: left; }
+  .video-grid.spatial figure[data-cam="right_repeater"] { grid-area: right; }
+  .video-grid.spatial video { max-height: 20vh; margin: 0 auto; }
+  @media (max-width: 860px) {
+    .video-grid.spatial {
+      grid-template-areas: "front front" "left right" "back back";
+      grid-template-columns: 1fr 1fr;
+    }
+    .video-grid.spatial video { max-height: 18vh; }
+  }
+  .video-grid figcaption {
+    position: absolute; top: 6px; left: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    color: #fff; background: rgba(0,0,0,0.55);
+    padding: 2px 7px; border-radius: 6px; pointer-events: none;
+  }
 
-        .subtitle {
-            color: var(--text-muted);
-            margin-top: 0;
-        }
+  /* KPI row */
+  .kpis {
+    display: grid; gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    padding: 16px 24px 0;
+  }
+  .tile {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .tile .label { color: var(--text-secondary); font-size: 12.5px; }
+  .tile .value { font-size: 24px; font-weight: 600; margin-top: 2px; }
+  .tile .unit  { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 3px; }
 
-        a {
-            color: var(--link-color);
-        }
+  /* chart grid */
+  .charts {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+    padding: 16px 24px 24px;
+  }
+  @media (max-width: 520px) { .charts { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px 10px;
+    min-width: 0;
+  }
+  .card h2 { font-size: 13.5px; font-weight: 600; margin: 0; }
+  .card .subtitle { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .card .legend {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 12px; color: var(--text-secondary); margin-top: 6px;
+  }
+  .legend .key { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .swatch { width: 14px; height: 2px; border-radius: 1px; display: inline-block; }
+  .plot { position: relative; margin-top: 6px; outline: none; }
+  .plot:focus-visible { box-shadow: 0 0 0 2px var(--series-1); border-radius: 6px; }
+  .plot svg { display: block; width: 100%; }
+  svg text { font-family: inherit; font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+  svg .striplabel { font-size: 11.5px; fill: var(--text-secondary); font-variant-numeric: normal; }
+  svg .maplabel { font-size: 11.5px; fill: var(--text-secondary); font-weight: 600; }
 
-        ul {
-            padding-left: 1.25rem;
-        }
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 3;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    font-size: 12px; min-width: 110px; display: none;
+  }
+  .tooltip .t-time { color: var(--muted); font-size: 11.5px; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 7px; margin-top: 2px; }
+  .tooltip .t-key { width: 12px; height: 2px; border-radius: 1px; flex: none; }
+  .tooltip .t-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tooltip .t-name { color: var(--text-secondary); }
 
-        .note {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-        }
-
-        .nav {
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
-        }
-    </style>
+  /* table view */
+  details.table-view { margin: 0 24px 32px; }
+  details.table-view summary {
+    cursor: pointer; color: var(--text-secondary); font-size: 13px;
+    padding: 6px 0;
+  }
+  .table-scroll {
+    overflow: auto; max-height: 420px;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+  }
+  table { border-collapse: collapse; font-size: 12px; width: 100%; }
+  th, td {
+    padding: 4px 10px; text-align: right; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid var(--grid);
+  }
+  th {
+    position: sticky; top: 0; background: var(--surface-1);
+    color: var(--text-secondary); font-weight: 600; text-align: right;
+  }
+  th:first-child, td:first-child { text-align: left; }
+</style>
 </head>
-
 <body>
-    <p class="nav">
-        <a href="https://github.com/teslamotors/dashcam">
-            View on GitHub
-        </a>
-    </p>
-    <h1>Tesla Dashcam Tools</h1>
-    <p class="subtitle">Tools for viewing and extracting metadata from supported Tesla Dashcam videos.</p>
 
-    <ul>
-        <li><a href="sei_explorer.html">SEI Explorer</a> — view dashcam footage with SEI metadata displayed alongside
-            video playback.</li>
-        <li><a href="https://github.com/teslamotors/dashcam/blob/master/sei_extractor.py">Python CLI</a> — Python-based
-            metadata extractor for extracting SEI data from MP4 files.</li>
-        <li><a href="https://github.com/teslamotors/dashcam/blob/master/dashcam.proto">Protobuf schema</a> — the
-            protobuf spec that is used to decode SEI data in the MP4 file(s).</li>
-    </ul>
-    <p class="note">Not all Tesla-generated dashcam clips contain SEI data. Only clips recorded on Tesla firmware
-        2025.44.25 or later and HW3 or above contain SEI data. If car is parked, SEI data may not be present.</p>
+<header>
+  <h1>SEI Telemetry Visualizer</h1>
+  <span class="sub">Tesla dashcam · sei_extractor.py CSV</span>
+  <span class="spacer"></span>
+  <button class="ghost" id="theme-btn" type="button">Theme: auto</button>
+</header>
+
+<div id="dropzone" role="button" tabindex="0" aria-label="Load a dashcam MP4 or SEI CSV file">
+  <div><strong>Drop dashcam MP4s or a SEI CSV here</strong> or click to choose files</div>
+  <div class="hint">Drop all four camera files (front / back / left_repeater / right_repeater) together
+    for a synced multi-camera view. SEI is extracted in-browser from the front camera.
+    CSV: output of <code>sei_extractor.py</code>.</div>
+  <div id="file-error"></div>
+  <input type="file" id="file-input" accept=".csv,.mp4,text/csv,video/mp4" multiple hidden>
+</div>
+
+<main id="app" hidden>
+  <div class="video-wrap" id="video-wrap" hidden>
+    <div class="video-grid" id="video-grid"></div>
+  </div>
+  <div class="controls">
+    <label>Speed unit
+      <select id="unit-select">
+        <option value="kmh" selected>km/h</option>
+        <option value="mph">mph</option>
+        <option value="mps">m/s</option>
+      </select>
+    </label>
+    <label>Frame rate
+      <input type="number" id="fps-input" min="1" max="120" step="0.1" value="36"> fps
+    </label>
+    <button class="ghost" id="load-btn" type="button">Load another file</button>
+    <span class="filename" id="filename"></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+  <div class="charts" id="charts"></div>
+
+  <details class="table-view" id="table-view">
+    <summary>Data table (all rows)</summary>
+    <div class="table-scroll" id="table-scroll"></div>
+  </details>
+</main>
+
+<script src="vendor/protobuf.min.js"></script>
+<script src="dashcam-mp4.js"></script>
+<script>
+"use strict";
+
+/* ---------- constants ---------- */
+
+/* Inlined copy of dashcam.proto so MP4 loading works from file:// (no fetch). */
+const PROTO_TEXT = `
+syntax = "proto3";
+message SeiMetadata {
+  uint32 version = 1;
+  enum Gear { GEAR_PARK = 0; GEAR_DRIVE = 1; GEAR_REVERSE = 2; GEAR_NEUTRAL = 3; }
+  Gear gear_state = 2;
+  uint64 frame_seq_no = 3;
+  float vehicle_speed_mps = 4;
+  float accelerator_pedal_position = 5;
+  float steering_wheel_angle = 6;
+  bool blinker_on_left = 7;
+  bool blinker_on_right = 8;
+  bool brake_applied = 9;
+  enum AutopilotState { NONE = 0; SELF_DRIVING = 1; AUTOSTEER = 2; TACC = 3; }
+  AutopilotState autopilot_state = 10;
+  double latitude_deg = 11;
+  double longitude_deg = 12;
+  double heading_deg = 13;
+  double linear_acceleration_mps2_x = 14;
+  double linear_acceleration_mps2_y = 15;
+  double linear_acceleration_mps2_z = 16;
+}`;
+const GEAR_NAMES = ["GEAR_PARK", "GEAR_DRIVE", "GEAR_REVERSE", "GEAR_NEUTRAL"];
+const AP_NAMES = ["NONE", "SELF_DRIVING", "AUTOSTEER", "TACC"];
+
+const HEADERS = ["version","gear_state","frame_seq_no","vehicle_speed_mps",
+  "accelerator_pedal_position","steering_wheel_angle","blinker_on_left",
+  "blinker_on_right","brake_applied","autopilot_state","latitude_deg",
+  "longitude_deg","heading_deg","linear_acceleration_mps2_x",
+  "linear_acceleration_mps2_y","linear_acceleration_mps2_z"];
+
+const GEAR_LABEL = { "": "P", GEAR_PARK: "P", GEAR_DRIVE: "D", GEAR_REVERSE: "R", GEAR_NEUTRAL: "N" };
+const AP_LABEL = { "": "Off", NONE: "Off", SELF_DRIVING: "FSD", AUTOSTEER: "Autosteer", TACC: "TACC" };
+const UNIT = {
+  kmh: { factor: 3.6,     label: "km/h" },
+  mph: { factor: 2.23694, label: "mph"  },
+  mps: { factor: 1,       label: "m/s"  },
+};
+
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/* ---------- state ---------- */
+
+let rows = [];           // parsed records
+let t = [];              // seconds per row (frame-derived, or exact from MP4)
+let tExact = null;       // exact per-row seconds from MP4 stts (null for CSV loads)
+let fps = 36;
+let unit = UNIT.kmh;
+let videoURLs = [];      // object URLs of the loaded MP4s
+let videoEl = null;      // master video (front camera when present)
+let slaveVideos = [];    // other camera videos, kept in lockstep with the master
+const timeCharts = [];   // registered charts sharing the time axis
+const videoWrap = document.getElementById("video-wrap");
+const fpsInput = document.getElementById("fps-input");
+
+const CAMERAS = [
+  { key: "front", label: "Front" },
+  { key: "back", label: "Back" },
+  { key: "left_repeater", label: "Left repeater" },
+  { key: "right_repeater", label: "Right repeater" },
+];
+const cameraOf = name => {
+  const m = /-(front|back|left_repeater|right_repeater)\.mp4$/i.exec(name);
+  return m ? m[1].toLowerCase() : null;
+};
+
+/* ---------- theme toggle ---------- */
+
+const themeBtn = document.getElementById("theme-btn");
+const THEMES = ["auto", "light", "dark"];
+let themeIdx = 0;
+themeBtn.addEventListener("click", () => {
+  themeIdx = (themeIdx + 1) % THEMES.length;
+  const mode = THEMES[themeIdx];
+  if (mode === "auto") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = mode;
+  themeBtn.textContent = "Theme: " + mode;
+  if (rows.length) renderAll();
+});
+
+/* ---------- CSV loading ---------- */
+
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("file-input");
+const fileError = document.getElementById("file-error");
+
+dropzone.addEventListener("click", () => fileInput.click());
+dropzone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
+fileInput.addEventListener("change", () => { if (fileInput.files.length) loadFiles([...fileInput.files]); });
+for (const ev of ["dragover", "dragenter"]) {
+  document.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add("dragover"); });
+}
+for (const ev of ["dragleave", "drop"]) {
+  document.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove("dragover"); });
+}
+document.addEventListener("drop", e => {
+  const fs = e.dataTransfer ? [...e.dataTransfer.files] : [];
+  if (fs.length) loadFiles(fs);
+});
+
+function loadFiles(files) {
+  const mp4s = files.filter(f => /\.mp4$/i.test(f.name));
+  const csv = files.find(f => /\.csv$/i.test(f.name));
+  const job = mp4s.length ? loadVideoFiles(mp4s)
+    : csv ? loadCsvFile(csv)
+    : Promise.reject(new Error("no .mp4 or .csv files in the selection"));
+  job.then(label => {
+    document.getElementById("filename").textContent = label;
+    fileError.style.display = "none";
+    dropzone.style.display = "none";
+    document.getElementById("app").hidden = false;
+    buildTable();
+    renderAll();
+  }).catch(err => {
+    const msg = "Could not load: " + err.message;
+    if (rows.length) {
+      // dropzone is hidden — surface the error in the controls row instead
+      document.getElementById("filename").textContent = msg;
+    } else {
+      fileError.textContent = msg;
+      fileError.style.display = "block";
+    }
+  });
+}
+
+function clearVideos() {
+  for (const u of videoURLs) URL.revokeObjectURL(u);
+  videoURLs = [];
+  slaveVideos = [];
+  videoEl = null;
+  document.getElementById("video-grid").replaceChildren();
+  videoWrap.hidden = true;
+}
+
+function loadCsvFile(file) {
+  return file.text().then(text => {
+    const parsed = parseCSV(text);
+    if (!parsed.length) throw new Error("No data rows found — is this the CSV output of sei_extractor.py?");
+    rows = parsed;
+    tExact = null;
+    fpsInput.disabled = false;
+    clearVideos();
+    return file.name + " · " + rows.length + " frames";
+  });
+}
+
+async function loadVideoFiles(files) {
+  if (!window.DashcamMP4 || !window.protobuf) {
+    throw new Error("dashcam-mp4.js / vendor/protobuf.min.js not found — open this page from the repo folder, or load a CSV instead");
+  }
+  // front first — it becomes the master (controls + telemetry source)
+  const order = name => { const i = CAMERAS.findIndex(c => c.key === cameraOf(name)); return i < 0 ? 99 : i; };
+  const sorted = [...files].sort((a, b) => order(a.name) - order(b.name));
+  const masterFile = sorted[0];
+
+  const buf = await masterFile.arrayBuffer();
+  const mp4 = new DashcamMP4(buf);
+  const Sei = protobuf.parse(PROTO_TEXT).root.lookupType("SeiMetadata");
+  const config = mp4.getConfig();
+  const frames = mp4.parseFrames(Sei);
+
+  // exact start time (s) of each video frame, from stts durations
+  const starts = [];
+  let accMs = 0;
+  for (const ms of config.durations) { starts.push(accMs / 1000); accMs += ms; }
+  const durationS = accMs / 1000;
+
+  const asNum = v => (v && typeof v === "object")
+    ? (typeof v.toNumber === "function" ? v.toNumber() : (v.low >>> 0))
+    : v;
+  const fmtRaw = v => Number.isFinite(v) ? String(+v.toFixed(6)) : "";
+  const out = [], tt = [];
+  for (const f of frames) {
+    if (!f.sei) continue;
+    const m = f.sei;
+    const gear = GEAR_NAMES[m.gearState] || String(m.gearState);
+    const ap = AP_NAMES[m.autopilotState] || String(m.autopilotState);
+    const noGps = m.latitudeDeg === 0 && m.longitudeDeg === 0;
+    const row = {
+      gear,
+      frame: asNum(m.frameSeqNo),
+      speed: m.vehicleSpeedMps,
+      pedal: m.acceleratorPedalPosition,
+      steer: m.steeringWheelAngle,
+      blinkL: !!m.blinkerOnLeft,
+      blinkR: !!m.blinkerOnRight,
+      brake: !!m.brakeApplied,
+      ap,
+      lat: noGps ? NaN : m.latitudeDeg,
+      lon: noGps ? NaN : m.longitudeDeg,
+      heading: m.headingDeg,
+      ax: m.linearAccelerationMps2X,
+      ay: m.linearAccelerationMps2Y,
+      az: m.linearAccelerationMps2Z,
+    };
+    row.raw = [
+      String(m.version), gear, String(row.frame), fmtRaw(row.speed), fmtRaw(row.pedal),
+      fmtRaw(row.steer), row.blinkL ? "True" : "", row.blinkR ? "True" : "",
+      row.brake ? "True" : "", ap, fmtRaw(row.lat), fmtRaw(row.lon), fmtRaw(row.heading),
+      fmtRaw(row.ax), fmtRaw(row.ay), fmtRaw(row.az),
+    ];
+    out.push(row);
+    tt.push(starts[f.index] !== undefined ? starts[f.index] : f.index * (durationS / frames.length));
+  }
+  if (!out.length) {
+    throw new Error("no SEI metadata in " + masterFile.name + " (needs Tesla firmware 2025.44.25+, HW3+; parked clips may lack SEI)");
+  }
+  rows = out;
+  tExact = tt;
+  fps = config.durations.length / (durationS || 1);
+  fpsInput.value = fps.toFixed(1);
+  fpsInput.disabled = true;
+
+  clearVideos();
+  const grid = document.getElementById("video-grid");
+  const camKeys = new Set(sorted.map(f => cameraOf(f.name)));
+  grid.classList.toggle("spatial", CAMERAS.every(c => camKeys.has(c.key)) && sorted.length === 4);
+  sorted.forEach((file, idx) => {
+    const fig = document.createElement("figure");
+    fig.dataset.cam = cameraOf(file.name) || "other";
+    const v = document.createElement("video");
+    v.playsInline = true;
+    v.preload = "auto";
+    const url = URL.createObjectURL(file);
+    videoURLs.push(url);
+    v.src = url;
+    if (idx === 0) {
+      v.controls = true;
+      videoEl = v;
+      attachMasterHandlers(v);
+    } else {
+      v.muted = true;
+      slaveVideos.push(v);
+    }
+    const cam = CAMERAS.find(c => c.key === cameraOf(file.name));
+    const cap = document.createElement("figcaption");
+    cap.textContent = cam ? cam.label : file.name;
+    fig.append(v, cap);
+    grid.appendChild(fig);
+  });
+  videoWrap.hidden = false;
+
+  const camCount = sorted.length > 1 ? sorted.length + " cameras" : masterFile.name;
+  return camCount + " · " + rows.length + " frames · " + fps.toFixed(1) + " fps";
+}
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== "");
+  if (!lines.length) return [];
+  const header = lines[0].split(",");
+  if (!header.includes("frame_seq_no")) {
+    throw new Error("missing expected SEI columns (frame_seq_no, …)");
+  }
+  const idx = {};
+  header.forEach((h, i) => idx[h.trim()] = i);
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const c = lines[i].split(",");
+    if (c.length < 3) continue;
+    const get = k => (idx[k] !== undefined ? (c[idx[k]] || "").trim() : "");
+    const num = k => { const v = parseFloat(get(k)); return Number.isFinite(v) ? v : NaN; };
+    const bool = k => /^true$/i.test(get(k));
+    out.push({
+      raw: c,
+      gear: get("gear_state"),
+      frame: num("frame_seq_no"),
+      speed: num("vehicle_speed_mps"),
+      pedal: num("accelerator_pedal_position"),
+      steer: num("steering_wheel_angle"),
+      blinkL: bool("blinker_on_left"),
+      blinkR: bool("blinker_on_right"),
+      brake: bool("brake_applied"),
+      ap: get("autopilot_state") || "NONE",
+      lat: num("latitude_deg"),
+      lon: num("longitude_deg"),
+      heading: num("heading_deg"),
+      ax: num("linear_acceleration_mps2_x"),
+      ay: num("linear_acceleration_mps2_y"),
+      az: num("linear_acceleration_mps2_z"),
+    });
+  }
+  return out;
+}
+
+/* ---------- controls ---------- */
+
+document.getElementById("unit-select").addEventListener("change", e => {
+  unit = UNIT[e.target.value]; renderAll();
+});
+fpsInput.addEventListener("change", e => {
+  if (tExact) return;
+  const v = parseFloat(e.target.value);
+  if (Number.isFinite(v) && v > 0) { fps = v; renderAll(); }
+});
+document.getElementById("load-btn").addEventListener("click", () => fileInput.click());
+
+/* ---------- video sync ---------- */
+
+let syncRaf = null;
+function videoIndex() {
+  return videoEl ? nearestIndex(Math.min(videoEl.currentTime, t[t.length - 1] || 0)) : 0;
+}
+/* keep the other cameras in lockstep with the master */
+function syncSlaves(hard) {
+  if (!videoEl) return;
+  for (const v of slaveVideos) {
+    if (hard || Math.abs(v.currentTime - videoEl.currentTime) > 0.08) {
+      v.currentTime = videoEl.currentTime;
+    }
+    if (v.playbackRate !== videoEl.playbackRate) v.playbackRate = videoEl.playbackRate;
+    if (videoEl.paused && !v.paused) v.pause();
+    else if (!videoEl.paused && v.paused) v.play().catch(() => {});
+  }
+}
+function syncTick() {
+  if (rows.length) setHover(videoIndex(), null);
+  syncSlaves(false);
+  syncRaf = (videoEl && !videoEl.paused) ? requestAnimationFrame(syncTick) : null;
+}
+function attachMasterHandlers(v) {
+  v.addEventListener("play", () => { syncSlaves(true); if (!syncRaf) syncTick(); });
+  v.addEventListener("pause", () => { syncSlaves(true); if (rows.length) setHover(videoIndex(), null); });
+  v.addEventListener("seeked", () => { syncSlaves(true); if (rows.length) setHover(videoIndex(), null); });
+  v.addEventListener("ratechange", () => syncSlaves(false));
+}
+function seekVideo(i) {
+  if (videoEl && videoEl.src && Number.isFinite(t[i])) videoEl.currentTime = t[i];
+}
+
+/* ---------- helpers ---------- */
+
+function niceTicks(min, max, count) {
+  if (min === max) { min -= 1; max += 1; }
+  const span = max - min;
+  const step0 = span / Math.max(1, count);
+  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  let step = mag;
+  for (const m of [1, 2, 2.5, 5, 10]) { if (mag * m >= step0) { step = mag * m; break; } }
+  const lo = Math.ceil(min / step) * step;
+  const ticks = [];
+  for (let v = lo; v <= max + step * 1e-6; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return ticks;
+}
+const fmt = (v, d) => Number.isFinite(v) ? v.toFixed(d) : "–";
+const fmtTime = s => s >= 60 ? Math.floor(s / 60) + ":" + String(Math.round(s % 60)).padStart(2, "0") : (Math.round(s * 10) / 10) + "s";
+const svgEl = (tag, attrs) => {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+};
+
+/* nearest row index for a time value */
+function nearestIndex(tv) {
+  let lo = 0, hi = t.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; (t[m] < tv) ? lo = m : hi = m; }
+  return (tv - t[lo] < t[hi] - tv) ? lo : hi;
+}
+
+/* ---------- shared crosshair ---------- */
+
+function setHover(index, sourceChart) {
+  for (const ch of timeCharts) ch.showCrosshair(index, ch === sourceChart);
+  if (gpsChart && gpsChart.showPos) gpsChart.showPos(index);
+}
+function clearHover() {
+  // with a video loaded, the crosshair rests at the playhead instead of vanishing
+  if (videoEl && videoEl.src && rows.length) { setHover(videoIndex(), null); return; }
+  for (const ch of timeCharts) ch.hideCrosshair();
+  if (gpsChart && gpsChart.showPos) gpsChart.showPos(-1);
+}
+
+/* ---------- chart factories ---------- */
+
+const M = { l: 46, r: 14, t: 8, b: 26 };   // plot margins (b includes x-axis band)
+
+function makeCard(title, subtitle, legendSeries) {
+  const card = document.createElement("div");
+  card.className = "card";
+  const h = document.createElement("h2");
+  h.textContent = title;
+  card.appendChild(h);
+  if (subtitle) {
+    const s = document.createElement("div");
+    s.className = "subtitle";
+    s.textContent = subtitle;
+    card.appendChild(s);
+  }
+  if (legendSeries && legendSeries.length >= 2) {
+    const lg = document.createElement("div");
+    lg.className = "legend";
+    for (const s of legendSeries) {
+      const key = document.createElement("span");
+      key.className = "key";
+      const sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = css(s.color);
+      const nm = document.createElement("span");
+      nm.textContent = s.label;
+      key.append(sw, nm);
+      lg.appendChild(key);
+    }
+    card.appendChild(lg);
+  }
+  const plot = document.createElement("div");
+  plot.className = "plot";
+  plot.tabIndex = 0;
+  card.appendChild(plot);
+  const tooltip = document.createElement("div");
+  tooltip.className = "tooltip";
+  plot.appendChild(tooltip);
+  return { card, plot, tooltip };
+}
+
+/* Time-series line chart. series: [{label, color, values, fmt}] */
+function lineChart(container, opts) {
+  const { card, plot, tooltip } = makeCard(opts.title, opts.subtitle, opts.series);
+  container.appendChild(card);
+  const H = opts.height || 210;
+  const state = { svg: null, cross: null, dots: [], x: v => 0, kIndex: -1 };
+
+  function render() {
+    plot.querySelectorAll("svg").forEach(s => s.remove());
+    const W = Math.max(280, plot.clientWidth);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+    const iw = W - M.l - M.r, ih = H - M.t - M.b;
+    const t0 = t[0], t1 = t[t.length - 1];
+    const x = tv => M.l + (tv - t0) / (t1 - t0 || 1) * iw;
+
+    let lo = Infinity, hi = -Infinity;
+    for (const s of opts.series) for (const v of s.values) {
+      if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+    }
+    if (!Number.isFinite(lo)) { lo = 0; hi = 1; }
+    if (opts.zeroBase) lo = Math.min(0, lo), hi = Math.max(hi, 0);
+    if (opts.symmetric) { const m = Math.max(Math.abs(lo), Math.abs(hi)); lo = -m; hi = m; }
+    const pad = (hi - lo) * 0.08 || 1;
+    let yLo = opts.zeroBase && lo === 0 ? 0 : lo - pad;
+    let yHi = hi + pad;
+    const y = v => M.t + ih - (v - yLo) / (yHi - yLo) * ih;
+
+    // gridlines + y ticks
+    for (const tv of niceTicks(yLo, yHi, 4)) {
+      const gy = y(tv);
+      if (gy < M.t - 1 || gy > M.t + ih + 1) continue;
+      svg.appendChild(svgEl("line", { x1: M.l, x2: W - M.r, y1: gy, y2: gy, stroke: "var(--grid)", "stroke-width": 1 }));
+      const lbl = svgEl("text", { x: M.l - 7, y: gy + 3.5, "text-anchor": "end" });
+      lbl.textContent = Math.abs(tv) >= 1000 ? tv.toLocaleString() : String(tv);
+      svg.appendChild(lbl);
+    }
+    // zero baseline (when domain crosses 0)
+    if (yLo < 0 && yHi > 0) {
+      svg.appendChild(svgEl("line", { x1: M.l, x2: W - M.r, y1: y(0), y2: y(0), stroke: "var(--baseline)", "stroke-width": 1 }));
+    }
+    // x axis + ticks
+    svg.appendChild(svgEl("line", { x1: M.l, x2: W - M.r, y1: M.t + ih, y2: M.t + ih, stroke: "var(--baseline)", "stroke-width": 1 }));
+    for (const tv of niceTicks(t0, t1, 6)) {
+      const lbl = svgEl("text", { x: x(tv), y: M.t + ih + 16, "text-anchor": "middle" });
+      lbl.textContent = fmtTime(tv);
+      svg.appendChild(lbl);
+    }
+
+    // series
+    opts.series.forEach((s, si) => {
+      let d = "", pen = false;
+      for (let i = 0; i < t.length; i++) {
+        const v = s.values[i];
+        if (!Number.isFinite(v)) { pen = false; continue; }
+        d += (pen ? "L" : "M") + x(t[i]).toFixed(1) + " " + y(v).toFixed(1);
+        pen = true;
+      }
+      if (opts.areaFill && si === 0) {
+        let a = "", apen = false, firstX = 0, lastX = 0;
+        for (let i = 0; i < t.length; i++) {
+          const v = s.values[i];
+          if (!Number.isFinite(v)) continue;
+          const px = x(t[i]);
+          if (!apen) { firstX = px; apen = true; a += "M" + px.toFixed(1) + " " + y(v).toFixed(1); }
+          else a += "L" + px.toFixed(1) + " " + y(v).toFixed(1);
+          lastX = px;
+        }
+        if (apen) {
+          const base = y(Math.max(yLo, 0));
+          a += "L" + lastX.toFixed(1) + " " + base + "L" + firstX.toFixed(1) + " " + base + "Z";
+          svg.appendChild(svgEl("path", { d: a, fill: css(s.color), opacity: 0.1, stroke: "none" }));
+        }
+      }
+      svg.appendChild(svgEl("path", { d, fill: "none", stroke: css(s.color), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    });
+
+    // crosshair + hover dots
+    const cross = svgEl("line", { y1: M.t, y2: M.t + ih, stroke: "var(--baseline)", "stroke-width": 1, visibility: "hidden" });
+    svg.appendChild(cross);
+    const dots = opts.series.map(s => {
+      const g = svgEl("g", { visibility: "hidden" });
+      g.appendChild(svgEl("circle", { r: 6, fill: "var(--surface-1)" }));
+      g.appendChild(svgEl("circle", { r: 4, fill: css(s.color) }));
+      svg.appendChild(g);
+      return g;
+    });
+
+    plot.appendChild(svg);
+    state.svg = svg; state.cross = cross; state.dots = dots;
+    state.x = x; state.y = y;
+  }
+
+  function showCrosshair(i, isSource) {
+    if (!state.cross) return;
+    state.kIndex = i;
+    const px = state.x(t[i]);
+    state.cross.setAttribute("x1", px);
+    state.cross.setAttribute("x2", px);
+    state.cross.setAttribute("visibility", "visible");
+    opts.series.forEach((s, si) => {
+      const v = s.values[i];
+      const g = state.dots[si];
+      if (Number.isFinite(v)) {
+        g.setAttribute("transform", `translate(${px},${state.y(v)})`);
+        g.setAttribute("visibility", "visible");
+      } else g.setAttribute("visibility", "hidden");
+    });
+    if (isSource) {
+      tooltip.replaceChildren();
+      const tt = document.createElement("div");
+      tt.className = "t-time";
+      tt.textContent = fmtTime(t[i]) + " · frame " + rows[i].frame;
+      tooltip.appendChild(tt);
+      for (const s of opts.series) {
+        const row = document.createElement("div");
+        row.className = "t-row";
+        const key = document.createElement("span");
+        key.className = "t-key";
+        key.style.background = css(s.color);
+        const val = document.createElement("span");
+        val.className = "t-val";
+        val.textContent = s.fmt(s.values[i]);
+        const name = document.createElement("span");
+        name.className = "t-name";
+        name.textContent = s.label;
+        row.append(key, val, name);
+        tooltip.appendChild(row);
+      }
+      tooltip.style.display = "block";
+      const pw = plot.clientWidth;
+      const tw = tooltip.offsetWidth;
+      let left = px + 12;
+      if (left + tw > pw - 4) left = px - tw - 12;
+      tooltip.style.left = Math.max(4, left) + "px";
+      tooltip.style.top = "8px";
+    } else {
+      tooltip.style.display = "none";
+    }
+  }
+  function hideCrosshair() {
+    if (!state.cross) return;
+    state.cross.setAttribute("visibility", "hidden");
+    for (const g of state.dots) g.setAttribute("visibility", "hidden");
+    tooltip.style.display = "none";
+    state.kIndex = -1;
+  }
+
+  attachPointer(plot, state, { showCrosshair, hideCrosshair });
+  const chart = { render, showCrosshair, hideCrosshair, plot };
+  timeCharts.push(chart);
+  return chart;
+}
+
+/* Event strips (gear / autopilot / brake / blinkers). rowsCfg: [{label, color, segs:[{i0,i1,text}]}] */
+function stripChart(container, opts) {
+  const { card, plot, tooltip } = makeCard(opts.title, opts.subtitle, null);
+  container.appendChild(card);
+  const ROW_H = 26, BAND = 14;
+  const H = M.t + opts.rows.length * ROW_H + M.b;
+  const state = { svg: null, cross: null, x: v => 0 };
+  const LBL = 82;
+
+  function render() {
+    plot.querySelectorAll("svg").forEach(s => s.remove());
+    const W = Math.max(280, plot.clientWidth);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+    const iw = W - LBL - M.r;
+    const t0 = t[0], t1 = t[t.length - 1];
+    const x = tv => LBL + (tv - t0) / (t1 - t0 || 1) * iw;
+    const ih = opts.rows.length * ROW_H;
+
+    svg.appendChild(svgEl("line", { x1: LBL, x2: W - M.r, y1: M.t + ih, y2: M.t + ih, stroke: "var(--baseline)", "stroke-width": 1 }));
+    for (const tv of niceTicks(t0, t1, 6)) {
+      const lbl = svgEl("text", { x: x(tv), y: M.t + ih + 16, "text-anchor": "middle" });
+      lbl.textContent = fmtTime(tv);
+      svg.appendChild(lbl);
+    }
+
+    opts.rows.forEach((row, ri) => {
+      const cy = M.t + ri * ROW_H + ROW_H / 2;
+      const lbl = svgEl("text", { x: LBL - 10, y: cy + 4, "text-anchor": "end", class: "striplabel" });
+      lbl.textContent = row.label;
+      svg.appendChild(lbl);
+      // faint track
+      svg.appendChild(svgEl("line", { x1: LBL, x2: W - M.r, y1: cy, y2: cy, stroke: "var(--grid)", "stroke-width": 1 }));
+      for (const seg of row.segs) {
+        const x0 = x(t[seg.i0]), x1 = Math.max(x(t[seg.i1]), x0 + 2);
+        const rect = svgEl("rect", {
+          x: x0.toFixed(1), y: cy - BAND / 2, width: (x1 - x0).toFixed(1), height: BAND,
+          rx: 4, fill: css(row.color),
+        });
+        svg.appendChild(rect);
+        if (seg.text) {
+          const wpx = x1 - x0;
+          const est = seg.text.length * 6.6 + 12;
+          if (wpx >= est) {
+            const st = svgEl("text", { x: (x0 + x1) / 2, y: cy + 3.5, "text-anchor": "middle" });
+            st.textContent = seg.text;
+            st.setAttribute("fill", pickInk(css(row.color)));
+            svg.appendChild(st);
+          }
+        }
+      }
+    });
+
+    const cross = svgEl("line", { y1: M.t, y2: M.t + ih, stroke: "var(--baseline)", "stroke-width": 1, visibility: "hidden" });
+    svg.appendChild(cross);
+    plot.appendChild(svg);
+    state.svg = svg; state.cross = cross; state.x = x;
+  }
+
+  function showCrosshair(i, isSource) {
+    if (!state.cross) return;
+    const px = state.x(t[i]);
+    state.cross.setAttribute("x1", px);
+    state.cross.setAttribute("x2", px);
+    state.cross.setAttribute("visibility", "visible");
+    if (isSource) {
+      tooltip.replaceChildren();
+      const tt = document.createElement("div");
+      tt.className = "t-time";
+      tt.textContent = fmtTime(t[i]) + " · frame " + rows[i].frame;
+      tooltip.appendChild(tt);
+      for (const row of opts.rows) {
+        const r = document.createElement("div");
+        r.className = "t-row";
+        const key = document.createElement("span");
+        key.className = "t-key";
+        key.style.background = css(row.color);
+        const val = document.createElement("span");
+        val.className = "t-val";
+        val.textContent = row.valueAt(i);
+        const name = document.createElement("span");
+        name.className = "t-name";
+        name.textContent = row.label;
+        r.append(key, val, name);
+        tooltip.appendChild(r);
+      }
+      tooltip.style.display = "block";
+      const pw = plot.clientWidth, tw = tooltip.offsetWidth;
+      let left = px + 12;
+      if (left + tw > pw - 4) left = px - tw - 12;
+      tooltip.style.left = Math.max(4, left) + "px";
+      tooltip.style.top = "4px";
+    } else tooltip.style.display = "none";
+  }
+  function hideCrosshair() {
+    if (!state.cross) return;
+    state.cross.setAttribute("visibility", "hidden");
+    tooltip.style.display = "none";
+  }
+
+  const state2 = { kIndex: -1 };
+  attachPointer(plot, state2, { showCrosshair, hideCrosshair });
+  const chart = { render, showCrosshair, hideCrosshair, plot };
+  timeCharts.push(chart);
+  return chart;
+}
+
+/* GPS path (not on the shared time axis) */
+function pathChart(container) {
+  const { card, plot, tooltip } = makeCard("GPS path", "Equirectangular projection · start → end", null);
+  container.appendChild(card);
+  const H = 300;
+  const state = { X: null, Y: null, posG: null };
+
+  function render() {
+    plot.querySelectorAll("svg").forEach(s => s.remove());
+    const W = Math.max(280, plot.clientWidth);
+    const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H });
+    const pts = [];
+    for (let i = 0; i < rows.length; i++) {
+      if (Number.isFinite(rows[i].lat) && Number.isFinite(rows[i].lon)) pts.push(i);
+    }
+    if (!pts.length) {
+      const msg = svgEl("text", { x: W / 2, y: H / 2, "text-anchor": "middle" });
+      msg.textContent = "No GPS data in this clip";
+      svg.appendChild(msg);
+      plot.appendChild(svg);
+      return;
+    }
+    const lat0 = rows[pts[0]].lat * Math.PI / 180;
+    const k = Math.cos(lat0);
+    let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity;
+    const proj = i => ({ px: rows[i].lon * k, py: rows[i].lat });
+    for (const i of pts) {
+      const p = proj(i);
+      if (p.px < xLo) xLo = p.px; if (p.px > xHi) xHi = p.px;
+      if (p.py < yLo) yLo = p.py; if (p.py > yHi) yHi = p.py;
+    }
+    const spanX = (xHi - xLo) || 1e-6, spanY = (yHi - yLo) || 1e-6;
+    const pad = 34;
+    const scale = Math.min((W - pad * 2) / spanX, (H - pad * 2) / spanY);
+    const ox = (W - spanX * scale) / 2, oy = (H - spanY * scale) / 2;
+    const X = i => ox + (proj(i).px - xLo) * scale;
+    const Y = i => H - oy - (proj(i).py - yLo) * scale;
+
+    let d = "";
+    pts.forEach((i, n) => { d += (n ? "L" : "M") + X(i).toFixed(1) + " " + Y(i).toFixed(1); });
+    svg.appendChild(svgEl("path", { d, fill: "none", stroke: css("--series-1"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+    const ends = [
+      { i: pts[0], name: "Start" },
+      { i: pts[pts.length - 1], name: "End" },
+    ];
+    for (const e of ends) {
+      const cx = X(e.i), cy = Y(e.i);
+      svg.appendChild(svgEl("circle", { cx, cy, r: 7, fill: "var(--surface-1)" }));
+      svg.appendChild(svgEl("circle", { cx, cy, r: 5, fill: css("--series-1") }));
+      const lbl = svgEl("text", { x: cx, y: cy - 12, "text-anchor": "middle", class: "maplabel" });
+      lbl.textContent = e.name;
+      svg.appendChild(lbl);
+    }
+    // current playhead / hover position marker
+    const posG = svgEl("g", { visibility: "hidden" });
+    posG.appendChild(svgEl("circle", { r: 7, fill: "var(--surface-1)" }));
+    posG.appendChild(svgEl("circle", { r: 5, fill: css("--series-6") }));
+    svg.appendChild(posG);
+    state.X = X; state.Y = Y; state.posG = posG;
+    plot.appendChild(svg);
+
+    // hover: nearest point
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect();
+      const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+      let best = -1, bd = Infinity;
+      for (const i of pts) {
+        const dx = X(i) - mx, dy = Y(i) - my, dd = dx * dx + dy * dy;
+        if (dd < bd) { bd = dd; best = i; }
+      }
+      if (best < 0) return;
+      tooltip.replaceChildren();
+      const tt = document.createElement("div");
+      tt.className = "t-time";
+      tt.textContent = fmtTime(t[best]) + " · frame " + rows[best].frame;
+      const val = document.createElement("div");
+      val.className = "t-row";
+      const v1 = document.createElement("span");
+      v1.className = "t-val";
+      v1.textContent = rows[best].lat.toFixed(6) + ", " + rows[best].lon.toFixed(6);
+      val.appendChild(v1);
+      const v2 = document.createElement("div");
+      v2.className = "t-row";
+      const v2v = document.createElement("span");
+      v2v.className = "t-val";
+      v2v.textContent = fmt(rows[best].speed * unit.factor, 1) + " " + unit.label;
+      const v2n = document.createElement("span");
+      v2n.className = "t-name";
+      v2n.textContent = "speed";
+      v2.append(v2v, v2n);
+      tooltip.append(tt, val, v2);
+      tooltip.style.display = "block";
+      let left = mx + 14;
+      if (left + tooltip.offsetWidth > plot.clientWidth - 4) left = mx - tooltip.offsetWidth - 14;
+      tooltip.style.left = Math.max(4, left) + "px";
+      tooltip.style.top = Math.max(4, my - 40) + "px";
+      setHover(best, null);   // reflect position on the time charts too
+      state.lastHover = best;
+    });
+    svg.addEventListener("click", () => {
+      if (state.lastHover !== undefined) seekVideo(state.lastHover);
+    });
+    svg.addEventListener("pointerleave", () => { tooltip.style.display = "none"; clearHover(); });
+  }
+
+  function showPos(i) {
+    if (!state.posG) return;
+    if (i >= 0 && Number.isFinite(rows[i] && rows[i].lat)) {
+      state.posG.setAttribute("transform", `translate(${state.X(i)},${state.Y(i)})`);
+      state.posG.setAttribute("visibility", "visible");
+    } else {
+      state.posG.setAttribute("visibility", "hidden");
+    }
+  }
+
+  return { render, showPos };
+}
+
+/* pointer + keyboard wiring for time-axis charts */
+function attachPointer(plot, state, api) {
+  plot.addEventListener("pointermove", ev => {
+    const svg = plot.querySelector("svg");
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const frac = (ev.clientX - r.left - M.l) / Math.max(1, r.width - M.l - M.r);
+    const tv = t[0] + Math.min(1, Math.max(0, frac)) * (t[t.length - 1] - t[0]);
+    const i = nearestIndex(tv);
+    state.kIndex = i;
+    setHover(i, timeCharts.find(c => c.plot === plot));
+  });
+  plot.addEventListener("pointerleave", () => { state.kIndex = -1; clearHover(); });
+  plot.addEventListener("click", () => {
+    if (state.kIndex >= 0) seekVideo(state.kIndex);
+  });
+  plot.addEventListener("keydown", ev => {
+    if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight" && ev.key !== "Escape") return;
+    ev.preventDefault();
+    if (ev.key === "Escape") { state.kIndex = -1; clearHover(); return; }
+    const step = ev.shiftKey ? 25 : 1;
+    let i = state.kIndex < 0 ? 0 : state.kIndex + (ev.key === "ArrowRight" ? step : -step);
+    i = Math.min(rows.length - 1, Math.max(0, i));
+    state.kIndex = i;
+    setHover(i, timeCharts.find(c => c.plot === plot));
+    seekVideo(i);
+  });
+}
+
+/* choose readable ink for text set inside a colored band */
+function pickInk(hex) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  const lum = 0.2126 * (r / 255) ** 2.2 + 0.7152 * (g / 255) ** 2.2 + 0.0722 * (b / 255) ** 2.2;
+  return lum > 0.35 ? "#0b0b0b" : "#ffffff";
+}
+
+/* group consecutive rows by a key fn → segments [{i0, i1, key}] */
+function segments(keyFn) {
+  const segs = [];
+  let cur = null;
+  for (let i = 0; i < rows.length; i++) {
+    const k = keyFn(rows[i], i);
+    if (cur && cur.key === k) cur.i1 = i;
+    else { cur = { i0: i, i1: i, key: k }; segs.push(cur); }
+  }
+  return segs;
+}
+
+/* ---------- KPIs ---------- */
+
+function buildKpis() {
+  const el = document.getElementById("kpis");
+  el.replaceChildren();
+  const speeds = rows.map(r => r.speed).filter(Number.isFinite);
+  const axs = rows.map(r => r.ax).filter(Number.isFinite);
+  const dur = t[t.length - 1] - t[0];
+  const brakeFrames = rows.filter(r => r.brake).length;
+  let brakeEvents = 0;
+  for (let i = 1; i < rows.length; i++) if (rows[i].brake && !rows[i - 1].brake) brakeEvents++;
+  if (rows.length && rows[0].brake) brakeEvents++;
+  const tiles = [
+    { label: "Duration", value: fmtTime(dur), unit: "" },
+    { label: "Max speed", value: fmt(Math.max(...speeds) * unit.factor, 1), unit: unit.label },
+    { label: "Avg speed", value: fmt(speeds.reduce((a, b) => a + b, 0) / speeds.length * unit.factor, 1), unit: unit.label },
+    { label: "Peak decel (x)", value: fmt(Math.min(...axs), 2), unit: "m/s²" },
+    { label: "Brake applied", value: fmt(brakeFrames / rows.length * 100, 1), unit: "% of clip" },
+    { label: "Brake events", value: String(brakeEvents), unit: "" },
+  ];
+  for (const tl of tiles) {
+    const d = document.createElement("div");
+    d.className = "tile";
+    const l = document.createElement("div");
+    l.className = "label";
+    l.textContent = tl.label;
+    const v = document.createElement("div");
+    v.className = "value";
+    v.textContent = tl.value;
+    if (tl.unit) {
+      const u = document.createElement("span");
+      u.className = "unit";
+      u.textContent = tl.unit;
+      v.appendChild(u);
+    }
+    d.append(l, v);
+    el.appendChild(d);
+  }
+}
+
+/* ---------- table view ---------- */
+
+function buildTable() {
+  const scroll = document.getElementById("table-scroll");
+  scroll.replaceChildren();
+  const table = document.createElement("table");
+  const thead = document.createElement("thead");
+  const trh = document.createElement("tr");
+  for (const h of HEADERS) {
+    const th = document.createElement("th");
+    th.textContent = h;
+    trh.appendChild(th);
+  }
+  thead.appendChild(trh);
+  table.appendChild(thead);
+  const tbody = document.createElement("tbody");
+  const frag = document.createDocumentFragment();
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    for (let c = 0; c < HEADERS.length; c++) {
+      const td = document.createElement("td");
+      td.textContent = r.raw[c] !== undefined ? r.raw[c] : "";
+      tr.appendChild(td);
+    }
+    frag.appendChild(tr);
+  }
+  tbody.appendChild(frag);
+  table.appendChild(tbody);
+  scroll.appendChild(table);
+}
+
+/* ---------- top-level render ---------- */
+
+let gpsChart = null;
+
+function renderAll() {
+  if (tExact) {
+    t = tExact;
+  } else {
+    const f0 = rows[0].frame;
+    t = rows.map(r => (r.frame - f0) / fps);
+  }
+
+  buildKpis();
+
+  const charts = document.getElementById("charts");
+  charts.replaceChildren();
+  timeCharts.length = 0;
+
+  lineChart(charts, {
+    title: "Vehicle speed",
+    subtitle: unit.label,
+    zeroBase: true, areaFill: true,
+    series: [{
+      label: "Speed", color: "--series-1",
+      values: rows.map(r => r.speed * unit.factor),
+      fmt: v => fmt(v, 1) + " " + unit.label,
+    }],
+  });
+
+  lineChart(charts, {
+    title: "Accelerator pedal",
+    subtitle: "% pressed",
+    zeroBase: true,
+    series: [{
+      label: "Pedal", color: "--series-1",
+      values: rows.map(r => r.pedal),
+      fmt: v => fmt(v, 1) + " %",
+    }],
+  });
+
+  lineChart(charts, {
+    title: "Steering wheel angle",
+    subtitle: "degrees · + left / − right",
+    symmetric: true,
+    series: [{
+      label: "Angle", color: "--series-1",
+      values: rows.map(r => r.steer),
+      fmt: v => fmt(v, 1) + "°",
+    }],
+  });
+
+  lineChart(charts, {
+    title: "Linear acceleration",
+    subtitle: "m/s²",
+    symmetric: true,
+    series: [
+      { label: "x (fwd)", color: "--series-1", values: rows.map(r => r.ax), fmt: v => fmt(v, 2) + " m/s²" },
+      { label: "y (lat)", color: "--series-2", values: rows.map(r => r.ay), fmt: v => fmt(v, 2) + " m/s²" },
+      { label: "z (vert)", color: "--series-3", values: rows.map(r => r.az), fmt: v => fmt(v, 2) + " m/s²" },
+    ],
+  });
+
+  stripChart(charts, {
+    title: "Driver inputs & state",
+    subtitle: "bands mark active periods",
+    rows: [
+      {
+        label: "Gear", color: "--series-1",
+        segs: segments(r => GEAR_LABEL[r.gear] || r.gear).map(s => ({ ...s, text: s.key })),
+        valueAt: i => GEAR_LABEL[rows[i].gear] || rows[i].gear,
+      },
+      {
+        label: "Autopilot", color: "--series-7",
+        segs: segments(r => AP_LABEL[r.ap] || r.ap).filter(s => s.key !== "Off").map(s => ({ ...s, text: s.key })),
+        valueAt: i => AP_LABEL[rows[i].ap] || rows[i].ap,
+      },
+      {
+        label: "Brake", color: "--series-6",
+        segs: segments(r => r.brake).filter(s => s.key),
+        valueAt: i => rows[i].brake ? "applied" : "—",
+      },
+      {
+        label: "Blinker L", color: "--series-4",
+        segs: segments(r => r.blinkL).filter(s => s.key),
+        valueAt: i => rows[i].blinkL ? "on" : "—",
+      },
+      {
+        label: "Blinker R", color: "--series-4",
+        segs: segments(r => r.blinkR).filter(s => s.key),
+        valueAt: i => rows[i].blinkR ? "on" : "—",
+      },
+    ],
+  });
+
+  lineChart(charts, {
+    title: "Heading",
+    subtitle: "degrees (0–360, N = 0)",
+    series: [{
+      label: "Heading", color: "--series-1",
+      values: rows.map(r => r.heading),
+      fmt: v => fmt(v, 1) + "°",
+    }],
+  });
+
+  gpsChart = pathChart(charts);
+
+  for (const ch of timeCharts) ch.render();
+  gpsChart.render();
+}
+
+/* re-render on resize (debounced) */
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  if (!rows.length) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    for (const ch of timeCharts) ch.render();
+    if (gpsChart) gpsChart.render();
+  }, 120);
+});
+</script>
 </body>
-
 </html>
