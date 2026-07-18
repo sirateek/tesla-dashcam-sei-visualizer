@@ -1,0 +1,3 @@
+[submodule "dashcam"]
+	path = dashcam
+	url = git@github.com:teslamotors/dashcam.git
