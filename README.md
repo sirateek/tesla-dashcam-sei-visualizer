@@ -42,37 +42,3 @@ A web-based tool to visualize and analyze Tesla dashcam video data along with ve
 ### Online Version
 
 Visit the hosted version directly in your browser—no installation needed.
-
-### Local Development
-
-```bash
-# Clone the repository
-git clone https://github.com/sirateek/tesla-dashcam-sei-visualizer.git
-
-# Navigate to the directory
-cd tesla-dashcam-sei-visualizer
-
-# Open in your browser
-open index.html
-# or
-open dashcam/index.html
-```
-
-## Technology Stack
-
-- **Frontend**: HTML5, JavaScript
-- **Video**: Native HTML5 video player
-- **Data Processing**: Client-side JavaScript
-- **Visualization**: Interactive charts and graphs
-
-## License
-
-[Add your license here]
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for any bugs or feature requests.
-
-## Support
-
-If you have questions or encounter issues, please open an issue on GitHub.
