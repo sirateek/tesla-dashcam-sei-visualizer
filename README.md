@@ -2,10 +2,10 @@
 
 A web-based tool to visualize and analyze Tesla dashcam video data along with vehicle telemetry information. Upload your Tesla dashcam videos and explore the data with interactive graphs and playback controls.
 
-![Dashboard Overview](https://raw.githubusercontent.com/sirateek/tesla-dashcam-sei-visualizer/master/docs/imgs/Screenshot%202569-07-18%20at%2022.15.05.png)
-![Video with Telemetry Graph](https://raw.githubusercontent.com/sirateek/tesla-dashcam-sei-visualizer/master/docs/imgs/Screenshot%202569-07-18%20at%2022.15.20.png)
+![Dashboard Overview](https://raw.githubusercontent.com/sirateek/tesla-dashcam-sei-visualizer/refs/heads/master/docs/imgs/Screenshot%202569-07-18%20at%2022.15.05.png)
+![Video with Telemetry Graph](https://raw.githubusercontent.com/sirateek/tesla-dashcam-sei-visualizer/refs/heads/master/docs/imgs/Screenshot%202569-07-18%20at%2022.15.20.png)
 
-![Detailed Metrics View](https://raw.githubusercontent.com/sirateek/tesla-dashcam-sei-visualizer/master/docs/imgs/Screenshot%202569-07-18%20at%2022.15.29.png)
+![Detailed Metrics View](https://raw.githubusercontent.com/sirateek/tesla-dashcam-sei-visualizer/refs/heads/master/docs/imgs/Screenshot%202569-07-18%20at%2022.15.29.png)
 
 ## Features
 
